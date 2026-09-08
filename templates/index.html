@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Industrial Monitoring Dashboard</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <main class="container">
+    <header>
+      <div>
+        <p class="eyebrow">INDUSTRY 4.0 • MACHINE MONITORING</p>
+        <h1>Industrial Monitoring Dashboard</h1>
+        <p class="muted">Simulated production machine telemetry</p>
+      </div>
+      <div id="connection" class="badge">CONNECTING</div>
+    </header>
+
+    <section class="grid">
+      <article class="card"><span>Machine Status</span><strong id="status">—</strong></article>
+      <article class="card"><span>Temperature</span><strong><span id="temperature">—</span> °C</strong><small>Limit: 80 °C</small></article>
+      <article class="card"><span>Motor Speed</span><strong><span id="rpm">—</span> RPM</strong><small>Typical: 1450 RPM</small></article>
+      <article class="card"><span>Voltage</span><strong><span id="voltage">—</span> V</strong><small>Nominal: 220 V</small></article>
+      <article class="card"><span>Current</span><strong><span id="current">—</span> A</strong><small>Limit: 11 A</small></article>
+      <article class="card"><span>Production Count</span><strong id="production">—</strong><small>Simulated total</small></article>
+    </section>
+
+    <section class="panel">
+      <div class="panel-header">
+        <h2>Alarm Monitor</h2>
+        <span id="alarm" class="alarm normal">NORMAL</span>
+      </div>
+      <p id="timestamp" class="muted">Waiting for sensor data…</p>
+    </section>
+
+    <section class="panel">
+      <h2>Recent Readings</h2>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Time</th><th>Temp °C</th><th>RPM</th><th>Voltage</th><th>Current</th><th>Status</th><th>Alarm</th></tr></thead>
+          <tbody id="history"></tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+  <script src="{{ url_for('static', filename='app.js') }}"></script>
+</body>
+</html>
