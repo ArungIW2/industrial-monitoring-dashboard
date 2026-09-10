@@ -2,7 +2,7 @@
 
 A portfolio-grade **Industry 4.0 machine monitoring platform** built around an edge telemetry pipeline. It supports simulated machine data today and is structured so a PLC/industrial gateway can publish the same telemetry through MQTT later.
 
-## Level 4 Architecture
+## Architecture
 
 ```text
 ┌──────────────────┐
@@ -108,7 +108,7 @@ Open `http://127.0.0.1:5000`.
 
 If no MQTT broker is available, the dashboard automatically generates demo telemetry.
 
-## Run the full Level 4 stack with Docker
+## Run the full with Docker
 
 Install Docker Desktop, then:
 
