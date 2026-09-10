@@ -1,32 +1,49 @@
-from flask import Flask, jsonify, render_template
-from database import get_connection, init_db
+from flask import Flask, jsonify, render_template, request
+from analytics import calculate_health, calculate_oee, trend_summary
+from database import ensure_schema, get_connection, init_db
+from mqtt_client import MQTTGateway
 from simulator import generate_reading
 
 app = Flask(__name__)
+init_db()
+ensure_schema()
 
 production_count = 0
+mqtt_gateway = MQTTGateway()
 
 
-def save_reading(reading):
+def save_reading(reading, source="SIMULATOR"):
     with get_connection() as connection:
         connection.execute(
             """
             INSERT INTO readings
-            (timestamp, temperature, rpm, voltage, current, machine_status, alarm, production_count)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            (timestamp, temperature, rpm, voltage, current, machine_status, alarm, production_count, source)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
-                reading["timestamp"],
-                reading["temperature"],
-                reading["rpm"],
-                reading["voltage"],
-                reading["current"],
-                reading["machine_status"],
-                reading["alarm"],
-                reading["production_count"],
+                reading["timestamp"], reading["temperature"], reading["rpm"],
+                reading["voltage"], reading["current"], reading["machine_status"],
+                reading["alarm"], reading["production_count"], source,
             ),
         )
+        if reading["alarm"] != "NORMAL":
+            connection.execute(
+                "INSERT INTO alarms (timestamp, alarm, severity) VALUES (?, ?, ?)",
+                (reading["timestamp"], reading["alarm"], "HIGH"),
+            )
         connection.commit()
+
+
+def ingest_mqtt(payload):
+    """Normalize an MQTT telemetry payload into the same database schema."""
+    required = ["timestamp", "temperature", "rpm", "voltage", "current", "machine_status", "alarm", "production_count"]
+    if not all(key in payload for key in required):
+        return
+    save_reading(payload, source="MQTT")
+
+
+mqtt_gateway.on_message = ingest_mqtt
+mqtt_gateway.start()
 
 
 @app.route("/")
@@ -37,21 +54,47 @@ def index():
 @app.route("/api/reading")
 def reading():
     global production_count
-    data = generate_reading(production_count)
-    production_count = data["production_count"]
-    save_reading(data)
-    return jsonify(data)
+    # Demo mode remains available when no MQTT broker is configured.
+    if not mqtt_gateway.connected:
+        data = generate_reading(production_count)
+        production_count = data["production_count"]
+        save_reading(data)
+        return jsonify({**data, "source": "SIMULATOR", "health_score": calculate_health(data)})
+    return jsonify({"source": "MQTT", "message": "Waiting for machine telemetry"})
 
 
 @app.route("/api/history")
 def history():
+    limit = min(request.args.get("limit", default=30, type=int), 200)
     with get_connection() as connection:
         rows = connection.execute(
-            "SELECT * FROM readings ORDER BY id DESC LIMIT 30"
+            "SELECT * FROM readings ORDER BY id DESC LIMIT ?", (limit,)
         ).fetchall()
     return jsonify([dict(row) for row in reversed(rows)])
 
 
+@app.route("/api/alarms")
+def alarms():
+    with get_connection() as connection:
+        rows = connection.execute(
+            "SELECT * FROM alarms ORDER BY id DESC LIMIT 20"
+        ).fetchall()
+    return jsonify([dict(row) for row in rows])
+
+
+@app.route("/api/analytics")
+def analytics():
+    return jsonify({"oee": calculate_oee(), "trend": trend_summary()})
+
+
+@app.route("/api/system")
+def system():
+    return jsonify({
+        "data_source": "MQTT" if mqtt_gateway.connected else "SIMULATOR",
+        "mqtt_connected": mqtt_gateway.connected,
+        "topic": mqtt_gateway.MQTT_TOPIC if hasattr(mqtt_gateway, "MQTT_TOPIC") else "factory/machine-01/telemetry",
+    })
+
+
 if __name__ == "__main__":
-    init_db()
     app.run(debug=True)
