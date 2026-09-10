@@ -1,7 +1,5 @@
 import json
 import os
-import threading
-import time
 
 try:
     import paho.mqtt.client as mqtt
@@ -10,11 +8,11 @@ except ImportError:  # pragma: no cover
 
 MQTT_HOST = os.getenv("MQTT_HOST", "localhost")
 MQTT_PORT = int(os.getenv("MQTT_PORT", "1883"))
-MQTT_TOPIC = os.getenv("MQTT_TOPIC", "factory/machine-01/telemetry")
+MQTT_TOPIC = os.getenv("MQTT_TOPIC", "factory/conveyor-01/telemetry")
 
 
 class MQTTGateway:
-    """Optional MQTT edge gateway. The dashboard can run without a broker."""
+    """MQTT edge subscriber used by the monitoring dashboard."""
 
     def __init__(self, on_message=None):
         self.on_message = on_message
