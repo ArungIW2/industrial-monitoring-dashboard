@@ -18,3 +18,14 @@ services:
       MQTT_TOPIC: factory/machine-01/telemetry
     depends_on:
       - mqtt
+
+  machine-simulator:
+    build: .
+    container_name: machine-01-simulator
+    command: ["python", "mqtt_publisher.py"]
+    environment:
+      MQTT_HOST: mqtt
+      MQTT_PORT: 1883
+      MQTT_TOPIC: factory/machine-01/telemetry
+    depends_on:
+      - mqtt
